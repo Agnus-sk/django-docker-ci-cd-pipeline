@@ -28,5 +28,15 @@ jobs:
       - name: Check Running Containers
         run: docker ps
 
+      - name: Wait for App to Start
+        run: sleep 10
+
+      - name: Run Django Migrations
+        run: docker compose exec -T web python manage.py migrate
+
+      - name: Run Django Tests
+        run: docker compose exec -T web python manage.py test
+
       - name: Stop Containers
         run: docker compose down
+      
