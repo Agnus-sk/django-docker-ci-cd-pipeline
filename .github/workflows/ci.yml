@@ -26,5 +26,5 @@ jobs:
         run: docker compose run backend python manage.py migrate
 
       - name: Run Django Tests
-        run: docker compose run backed python manage.py test
+        run: docker compose run backend python manage.py test
 
