@@ -1,0 +1,377 @@
+# DevOps Implementation Documentation
+
+This document describes the DevOps workflow followed to containerize and
+prepare a full-stack application for deployment. It focuses on practical
+steps, real issues encountered, and how they were resolved.
+
+---
+
+## Step 0: Project Understanding and Local Setup
+
+### Project Overview
+
+The project consists of:
+- Backend: Django (API-based)
+- Frontend: React (Vite + TypeScript)
+
+Before introducing Docker or automation tools, the application was first
+understood and verified locally.
+
+---
+
+### Backend Local Setup
+
+Steps performed:
+- Navigated to the backend directory
+- Created and activated a Python virtual environment
+- Installed required dependencies
+- Started the Django development server
+
+Command used:
+```bash
+python manage.py runserver
+```
+
+Observations:
+- Backend server started on `http://127.0.0.1:8000`
+- The root URL (`/`) returned a 404 response, which is expected for an API-only backend
+- The valid API endpoint was confirmed at `/api/hello/`
+
+---
+
+### Dependency Resolution
+
+While starting the backend locally, missing dependencies were encountered.
+
+Issues faced:
+- ModuleNotFoundError: No module named 'django'
+- ModuleNotFoundError: No module named 'corsheaders'
+
+Resolution:
+- Installed missing dependencies using pip
+- Generated a dependency file using:
+```bash
+pip freeze > requirements.txt
+```
+
+This ensured all required dependencies were captured for Docker and CI/CD.
+
+---
+
+### Database Initialization
+
+The backend reported unapplied database migrations during startup.
+
+Resolution:
+```bash
+python manage.py migrate
+```
+
+This initialized the default Django database schema.
+
+---
+
+## Step 1: Backend Dockerization
+
+### Objective
+
+The goal of this step was to containerize the Django backend so it can run
+consistently across different environments without relying on the host
+system configuration.
+
+---
+
+### Dockerfile Creation
+
+A Dockerfile was created with the following considerations:
+- Used a minimal Python base image
+- Installed dependencies using requirements.txt
+- Ran the application as a non-root user
+- Exposed port 8000 for API access
+
+The backend container was configured to run using:
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
+
+Binding to 0.0.0.0 allows the container to accept external connections.
+
+---
+
+### Docker Build Issue: Missing requirements.txt
+
+Initial Docker builds failed because requirements.txt was not present
+in the Docker build context.
+
+Resolution:
+- Generated the file using pip freeze
+- Corrected a file naming issue (requirement.txt → requirements.txt)
+- Re-ran the Docker build
+
+---
+
+### Docker Build Issue: Network and DNS Failures
+
+During Docker image builds, package installation failed due to DNS
+resolution issues inside Docker.
+
+Errors observed:
+- Temporary failure in name resolution
+- apt-get unable to reach Debian repositories
+- pip install unable to reach PyPI
+
+These issues were caused by Docker Desktop networking limitations on
+Fedora and restricted DNS resolution during image builds.
+
+---
+
+### Offline Dependency Installation Solution
+
+To resolve persistent network issues, an offline dependency installation
+strategy was implemented.
+
+Steps followed:
+```bash
+pip download -r requirements.txt -d wheels
+```
+
+```bash
+pip install --no-index --find-links=/wheels -r requirements.txt
+```
+
+This approach allowed Docker images to be built without requiring
+internet access during the build process.
+
+---
+
+### Backend Container Verification
+
+After a successful Docker build:
+```bash
+docker run -p 8000:8000 django-backend
+```
+
+The API endpoint /api/hello/ responded correctly in the browser,
+confirming the backend was running inside a Docker container.
+
+---
+
+## Key Learnings
+
+- Docker containers run in isolated environments independent of the host OS
+- Network and DNS issues are common in real-world Docker setups
+- Offline dependency installation is a valid DevOps solution
+- Clear documentation of issues and resolutions improves maintainability
+
+---
+
+## Next Steps
+
+- Dockerize the frontend (React)
+- Use Docker Compose for multi-container setup
+- Implement CI/CD using GitHub Actions
+- Provision infrastructure using Terraform
+
+---
+
+## Conclusion
+
+The Django backend was successfully containerized while handling real
+infrastructure challenges. The backend is now portable, reproducible,
+and ready for integration into a complete DevOps pipeline.
+
+
+
+## Step 2: Frontend Dockerization
+
+### Objective
+
+The objective of this step was to containerize the React frontend so it
+can run independently inside Docker, without relying on a locally
+installed Node.js environment.
+
+---
+
+### Frontend Overview
+
+The frontend is built using:
+- React
+- Vite
+- TypeScript
+
+In local development, the application runs using the Vite development
+server. For Dockerization, the frontend is built into static assets and
+served using nginx.
+
+---
+
+### Dockerization Approach
+
+A multi-stage Docker build was used:
+
+- **Build stage**:
+  - Used a Node.js base image
+  - Installed frontend dependencies
+  - Built the production-ready static files
+
+- **Runtime stage**:
+  - Used an nginx base image
+  - Served the built static files efficiently
+
+This approach keeps the final image lightweight and production-ready.
+
+---
+
+### Dockerfile Implementation
+
+The frontend Dockerfile:
+- Uses `node:20-alpine` to build the application
+- Runs `npm install` to install dependencies
+- Runs `npm run build` to generate static files
+- Uses `nginx:alpine` to serve the final build
+- Exposes port 80 for HTTP access
+
+---
+
+### Docker Build Issue: Missing TypeScript
+
+During the initial Docker build, the following error was encountered:
+
+- `tsc: not found`
+
+Root cause:
+- TypeScript was used in the build process but was not listed as a project
+  dependency.
+
+Resolution:
+- Added TypeScript as a development dependency in `package.json`
+- Rebuilt the Docker image successfully
+
+This ensured the build process worked consistently inside Docker.
+
+---
+
+### Frontend Container Verification
+
+After a successful Docker build:
+- The frontend container was started using:
+```bash
+docker run -p 3000:80 react-frontend
+The application was then accessed at:
+
+http://localhost:3000
+
+The React frontend loaded successfully, confirming that:
+- The production build was generated correctly
+- Static assets were served properly
+- Docker port mapping was functioning as expected
+
+---
+
+### Frontend–Backend Integration Testing
+
+After verifying both containers independently, integration testing was performed.
+
+The frontend was configured to communicate with the backend API endpoint
+running on port 8000.
+
+Validation steps:
+- Opened the frontend in the browser
+- Triggered API calls from the React application
+- Verified successful responses from `/api/hello/`
+- Confirmed absence of CORS errors
+
+This confirmed proper inter-container communication using Docker networking.
+
+---
+
+## Step 3: Multi-Container Orchestration using Docker Compose
+
+### Objective
+
+The goal of this step was to manage both backend and frontend services
+using Docker Compose instead of running containers manually.
+
+Docker Compose allows:
+- Centralized configuration
+- Automatic network creation
+- Simplified multi-service startup
+- Service dependency management
+
+---
+
+### docker-compose.yml Implementation
+
+A docker-compose.yml file was created defining two services:
+
+- backend
+- frontend
+
+Each service included:
+- Build context
+- Port mappings
+- Service dependency configuration
+
+Example structure:
+
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+The entire application stack could now be started using:
+
+docker compose up --build
+
+Both services launched successfully and were accessible via:
+
+- Backend → http://localhost:8000
+- Frontend → http://localhost:3000
+
+---
+
+## Step 4: Running Containers as Non-Root Users
+
+### Objective
+
+To enhance container security by ensuring services do not run as the root user.
+
+Running containers as non-root reduces:
+- Privilege escalation risks
+- File system vulnerabilities
+- Security exposure in production environments
+
+---
+
+### Backend Security Implementation
+
+The backend Dockerfile was updated to:
+
+- Create a dedicated application user
+- Assign ownership of the application directory
+- Switch execution to the non-root user
+- Resolve SQLite permission issues
+
+After applying database migrations inside the container:
+
+docker compose exec backend python manage.py migrate
+
+The backend ran successfully without permission errors.
+
+---
+
+### Frontend Security Implementation
+
+For the frontend:
+
+- A lightweight static server was used to serve producti
