@@ -61,3 +61,4 @@ A simple "Hello World" full-stack application built with **Django** (Backend) an
 =======
 # django-docker-ci-cd-pipeline
 Dockerized Django application with automated CI/CD pipeline
+Redeploy test
