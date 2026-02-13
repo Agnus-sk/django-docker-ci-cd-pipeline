@@ -5,6 +5,8 @@ services:
     image: ${DOCKER_USERNAME}/django-backend:latest
     ports:
       - "8000:8000"
+    environment:
+      - ALLOWED_HOSTS=*
 
   frontend:
     build:
