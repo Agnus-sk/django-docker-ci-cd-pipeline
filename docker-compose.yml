@@ -2,14 +2,14 @@ services:
   backend:
     build:
       context: ./backend
-    image: django-backend:latest
+    image: ${DOCKER_USERNAME}/django-backend:latest
     ports:
       - "8000:8000"
 
   frontend:
     build:
       context: ./frontend
-    image: django-frontend:latest
+    image: ${DOCKER_USERNAME}/django-frontend:latest
     ports:
       - "3000:3000"
     depends_on:
