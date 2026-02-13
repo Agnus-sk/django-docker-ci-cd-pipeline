@@ -80,5 +80,6 @@ jobs:
             fi
             cd django-docker-ci-cd-pipeline
             git pull
-            docker compose down
-            docker compose up -d --build
+            docker compose pull
+            docker compose up -d
+
