@@ -59,6 +59,90 @@ A simple "Hello World" full-stack application built with **Django** (Backend) an
 - **CORS**: Configured in Django to allow the React frontend to fetch data during local development.
 - **Responsive Design**: Custom CSS ensures the application looks premium on all screen sizes and supports dark mode.
 =======
-# django-docker-ci-cd-pipeline
-Dockerized Django application with automated CI/CD pipeline
-Redeploy test
+
+---
+
+## 🚀 DevOps & CI/CD Implementation
+
+This project was extended with a fully automated CI/CD pipeline using:
+
+- Docker
+- Docker Compose
+- GitHub Actions
+- Docker Hub
+- AWS EC2
+
+### CI/CD Workflow
+
+1. Code pushed to GitHub
+2. GitHub Actions builds Docker images
+3. Images pushed to Docker Hub
+4. GitHub connects to AWS EC2 via SSH
+5. EC2 pulls latest images
+6. Containers restart automatically
+
+No manual deployment steps are required.
+
+---
+
+## 🐳 Dockerization
+
+Both frontend and backend were containerized.
+
+Services are managed using Docker Compose:
+
+- Backend exposed on port 8000
+- Frontend exposed on port 3000
+- Images tagged as:
+  - `${DOCKER_USERNAME}/django-backend:latest`
+  - `${DOCKER_USERNAME}/django-frontend:latest`
+
+Run locally with:
+
+```bash
+docker compose up -d
+```
+
+---
+
+## ☁️ Cloud Deployment (AWS EC2)
+
+- Ubuntu EC2 instance
+- Docker & Docker Compose installed
+- Security group configured for required ports
+- Deployment automated via SSH from GitHub Actions
+
+Access after deployment:
+
+- Backend → `http://EC2_PUBLIC_IP:8000`
+- Frontend → `http://EC2_PUBLIC_IP:3000`
+
+---
+
+## 🔐 Secure Configuration
+
+Environment variables used instead of hardcoded values.
+
+In Django:
+
+```python
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
+```
+
+In Docker Compose:
+
+```yaml
+environment:
+  - ALLOWED_HOSTS=*
+```
+
+This avoids IP dependency and supports infrastructure recreation.
+
+---
+
+## 📸 Deployment Proof
+
+Screenshots available in `/screenshots` folder showing:
+
+- Successful GitHub Actions run
+- Docker Hub image

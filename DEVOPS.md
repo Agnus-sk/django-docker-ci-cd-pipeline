@@ -257,3 +257,228 @@ After a successful Docker build:
 - The frontend container was started using:
 ```bash
 docker run -p 3000:80 react-frontend
+
+
+---
+
+## Docker Compose Integration
+
+After successfully containerizing the backend and frontend individually,
+the next step was to orchestrate both services together using Docker Compose.
+
+### docker-compose.yml Structure
+
+- Defined two services:
+  - `backend`
+  - `frontend`
+- Each service:
+  - Uses its respective build context
+  - Exposes necessary ports
+  - Uses Docker Hub image naming format
+
+Example structure:
+
+```yaml
+services:
+  backend:
+    build:
+      context: ./backend
+    image: ${DOCKER_USERNAME}/django-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - ALLOWED_HOSTS=*
+
+  frontend:
+    build:
+      context: ./frontend
+    image: ${DOCKER_USERNAME}/django-frontend:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+```
+
+This allowed both services to run together using:
+
+```bash
+docker compose up -d
+```
+
+---
+
+## CI Pipeline Setup (GitHub Actions)
+
+A CI/CD workflow was created inside:
+
+```
+.github/workflows/ci.yml
+```
+
+### Workflow Triggers
+
+- On push to `main`
+- On pull request to `main`
+
+### CI Stages
+
+1. Checkout repository
+2. Set up Docker Buildx
+3. Login to Docker Hub
+4. Build Docker images
+5. Push images to Docker Hub
+6. Deploy to AWS EC2 via SSH
+
+---
+
+## Docker Hub Integration
+
+To enable automated image storage:
+
+- Created Docker Hub repositories:
+  - `django-backend`
+  - `django-frontend`
+
+- Added GitHub Secrets:
+  - `DOCKER_USERNAME`
+  - `DOCKER_PASSWORD`
+
+Images are tagged as:
+
+```
+${DOCKER_USERNAME}/django-backend:latest
+${DOCKER_USERNAME}/django-frontend:latest
+```
+
+This ensures images are pushed to Docker Hub during CI.
+
+---
+
+## AWS EC2 Deployment (Automatic)
+
+An EC2 instance (Ubuntu) was launched with:
+
+- Port 22 (SSH)
+- Port 8000 (Backend)
+- Port 3000 (Frontend)
+
+Docker and Docker Compose were installed on EC2.
+
+### GitHub Secrets for Deployment
+
+- `EC2_HOST`
+- `EC2_USER`
+- `SSH_PRIVATE_KEY`
+
+---
+
+## SSH Deployment Automation
+
+Deployment is handled using:
+
+```
+appleboy/ssh-action
+```
+
+### Deployment Script
+
+```yaml
+script: |
+  export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+
+  if [ ! -d "django-docker-ci-cd-pipeline" ]; then
+    git clone https://github.com/Agnus-sk/django-docker-ci-cd-pipeline.git
+  fi
+
+  cd django-docker-ci-cd-pipeline
+  git pull
+  docker compose pull
+  docker compose up -d
+```
+
+### Deployment Flow
+
+1. CI builds images
+2. Images pushed to Docker Hub
+3. GitHub connects to EC2 via SSH
+4. EC2 pulls latest images
+5. Containers restart automatically
+
+No manual deployment required.
+
+---
+
+## Handling Environment Variables
+
+To avoid hardcoding IP addresses:
+
+In `settings.py`:
+
+```python
+import os
+
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
+```
+
+In `docker-compose.yml`:
+
+```yaml
+environment:
+  - ALLOWED_HOSTS=*
+```
+
+This ensures:
+
+- No IP dependency
+- No need to update code if EC2 IP changes
+- Production-ready configuration practice
+
+---
+
+## Final Working Architecture
+
+CI/CD Pipeline Flow:
+
+Developer Push → GitHub Actions →  
+Build Images → Push to Docker Hub →  
+SSH into EC2 → Pull Images → Restart Containers
+
+Services Running:
+
+- Backend: http://EC2_PUBLIC_IP:8000
+- Frontend: http://EC2_PUBLIC_IP:3000
+
+Containers Verified Using:
+
+```bash
+docker ps
+```
+
+---
+
+## Key DevOps Concepts Implemented
+
+- Multi-service containerization
+- Docker Compose orchestration
+- CI/CD automation with GitHub Actions
+- Secure secret management
+- Docker Hub image registry
+- Remote deployment via SSH
+- Environment-based configuration
+- Infrastructure recreation capability
+
+---
+
+## Result
+
+A fully automated CI/CD pipeline capable of:
+
+- Building Docker images
+- Pushing images to Docker Hub
+- Deploying to AWS EC2 automatically
+- Restarting services on every push
+
+No manual intervention required after code push.
+
+---
+

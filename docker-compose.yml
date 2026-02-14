@@ -3,16 +3,26 @@ services:
     build:
       context: ./backend
     image: ${DOCKER_USERNAME}/django-backend:latest
-    ports:
-      - "8000:8000"
     environment:
       - ALLOWED_HOSTS=*
+    expose:
+      - "8000"
 
   frontend:
     build:
       context: ./frontend
     image: ${DOCKER_USERNAME}/django-frontend:latest
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     depends_on:
+      - backend
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - frontend
       - backend
