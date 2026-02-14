@@ -26,3 +26,22 @@ dist-ssr/
 # OS
 .DS_Store
 Thumbs.db
+
+
+# Terraform
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/terraform.tfvars
+
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Node
+node_modules/
+dist/
+
+# Environment
+.env
