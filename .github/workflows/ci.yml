@@ -76,6 +76,8 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
+        env:
+          TF_VAR_key_name: ${{ secrets.TF_VAR_key_name }}
 
       - name: Wait for EC2 to initialize
         run: sleep 60
